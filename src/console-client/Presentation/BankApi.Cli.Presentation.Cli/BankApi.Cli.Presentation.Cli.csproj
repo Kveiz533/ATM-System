@@ -6,7 +6,6 @@
     <PackageReference Include="Spectre.Console.Cli" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Application\BankApi.Cli.Application.Abstractions\BankApi.Cli.Application.Abstractions.csproj" />
     <ProjectReference Include="..\..\Application\BankApi.Cli.Application.Contracts\BankApi.Cli.Application.Contracts.csproj" />
   </ItemGroup>
 </Project>
