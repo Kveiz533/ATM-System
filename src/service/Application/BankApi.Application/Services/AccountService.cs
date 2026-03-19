@@ -2,6 +2,7 @@
 using BankApi.Application.Abstractions.Queries;
 using BankApi.Application.Contracts.Accounts;
 using BankApi.Application.Contracts.Accounts.Operations;
+using BankApi.Application.Extensions;
 using BankApi.Application.Mapping;
 using BankApi.Domain.Accounts;
 using BankApi.Domain.Accounts.Results;
@@ -25,72 +26,48 @@ public sealed class AccountService : IAccountService
         Balance.Request request,
         CancellationToken cancellationToken)
     {
-        var sessionQuery = SessionQuery.Build(builder => builder
-            .WithSessionId(request.SessionId)
-            .WithPageSize(1));
+        UserSession? session = await _context.UserSessionRepository.FindUserSessionByIdAsync(request.SessionId, cancellationToken);
 
-        UserSession[] sessions = await _context.UserSessionRepository
-            .QueryAsync(sessionQuery, cancellationToken)
-            .ToArrayAsync(cancellationToken);
-
-        if (sessions.Length == 0)
+        if (session is null)
         {
             return new Balance.Response.Failure("User session not found");
         }
 
-        var accountQuery = AccountQuery.Build(builder => builder
-            .WithAccountId(sessions[0].AccountId)
-            .WithPageSize(1));
+        Account? account = await _context.AccountRepository.FindAccountByIdAsync(session.AccountId, cancellationToken);
 
-        Account[] accounts = await _context.AccountRepository
-            .QueryAsync(accountQuery, cancellationToken)
-            .ToArrayAsync(cancellationToken);
-
-        if (accounts.Length == 0)
+        if (account is null)
         {
             return new Balance.Response.Failure("Account not found");
         }
 
         var bankOperation = new BankOperation(
             BankOperationId.Zero(),
-            accounts[0].Id,
+            account.Id,
             BankOperationType.ShowBalance,
-            accounts[0].Balance,
+            account.Balance,
             DateTimeOffset.UtcNow);
 
         await _context.OperationHistoryRepository
             .AddAsync([bankOperation], cancellationToken)
             .ToArrayAsync(cancellationToken);
 
-        return new Balance.Response.Success(accounts[0].Balance.MapToDto());
+        return new Balance.Response.Success(account.Balance.MapToDto());
     }
 
     public async Task<Deposit.Response> DepositAsync(
         Deposit.Request request,
         CancellationToken cancellationToken)
     {
-        var sessionQuery = SessionQuery.Build(builder => builder
-            .WithSessionId(request.SessionId)
-            .WithPageSize(1));
+        UserSession? session = await _context.UserSessionRepository.FindUserSessionByIdAsync(request.SessionId, cancellationToken);
 
-        UserSession[] sessions = await _context.UserSessionRepository
-            .QueryAsync(sessionQuery, cancellationToken)
-            .ToArrayAsync(cancellationToken);
-
-        if (sessions.Length == 0)
+        if (session is null)
         {
             return new Deposit.Response.Failure("User session not found");
         }
 
-        var accountQuery = AccountQuery.Build(builder => builder
-            .WithAccountId(sessions[0].AccountId)
-            .WithPageSize(1));
+        Account? account = await _context.AccountRepository.FindAccountByIdAsync(session.AccountId, cancellationToken);
 
-        Account[] accounts = await _context.AccountRepository
-            .QueryAsync(accountQuery, cancellationToken)
-            .ToArrayAsync(cancellationToken);
-
-        if (accounts.Length == 0)
+        if (account is null)
         {
             return new Deposit.Response.Failure("Account not found");
         }
@@ -102,16 +79,16 @@ public sealed class AccountService : IAccountService
 
         try
         {
-            accounts[0].Deposit(new Money(request.Amount));
+            account.Deposit(new Money(request.Amount));
 
-            await _context.AccountRepository.UpdateAsync([accounts[0]], cancellationToken)
+            await _context.AccountRepository.UpdateAsync([account], cancellationToken)
                 .ToArrayAsync(cancellationToken);
 
             var bankOperation = new BankOperation(
                 BankOperationId.Zero(),
-                accounts[0].Id,
+                account.Id,
                 BankOperationType.Deposit,
-                accounts[0].Balance,
+                account.Balance,
                 DateTimeOffset.UtcNow);
 
             await _context.OperationHistoryRepository
@@ -119,7 +96,7 @@ public sealed class AccountService : IAccountService
                 .ToArrayAsync(cancellationToken);
 
             scope.Complete();
-            return new Deposit.Response.Success(accounts[0].Balance.MapToDto());
+            return new Deposit.Response.Success(account.Balance.MapToDto());
         }
         catch (Exception ex)
         {
@@ -131,28 +108,16 @@ public sealed class AccountService : IAccountService
         Withdraw.Request request,
         CancellationToken cancellationToken)
     {
-        var sessionQuery = SessionQuery.Build(builder => builder
-            .WithSessionId(request.SessionId)
-            .WithPageSize(1));
+        UserSession? session = await _context.UserSessionRepository.FindUserSessionByIdAsync(request.SessionId, cancellationToken);
 
-        UserSession[] sessions = await _context.UserSessionRepository
-            .QueryAsync(sessionQuery, cancellationToken)
-            .ToArrayAsync(cancellationToken);
-
-        if (sessions.Length == 0)
+        if (session is null)
         {
             return new Withdraw.Response.Failure("User session not found");
         }
 
-        var accountQuery = AccountQuery.Build(builder => builder
-            .WithAccountId(sessions[0].AccountId)
-            .WithPageSize(1));
+        Account? account = await _context.AccountRepository.FindAccountByIdAsync(session.AccountId, cancellationToken);
 
-        Account[] accounts = await _context.AccountRepository
-            .QueryAsync(accountQuery, cancellationToken)
-            .ToArrayAsync(cancellationToken);
-
-        if (accounts.Length == 0)
+        if (account is null)
         {
             return new Withdraw.Response.Failure("Account not found");
         }
@@ -164,21 +129,21 @@ public sealed class AccountService : IAccountService
 
         try
         {
-            WithdrawResult withDrawResult = accounts[0].Withdraw(new Money(request.Amount));
+            WithdrawResult withDrawResult = account.Withdraw(new Money(request.Amount));
 
             if (withDrawResult is WithdrawResult.Failure failure)
             {
                 return new Withdraw.Response.Failure(failure.Error);
             }
 
-            await _context.AccountRepository.UpdateAsync([accounts[0]], cancellationToken)
+            await _context.AccountRepository.UpdateAsync([account], cancellationToken)
                 .ToArrayAsync(cancellationToken);
 
             var bankOperation = new BankOperation(
                 BankOperationId.Zero(),
-                accounts[0].Id,
+                account.Id,
                 BankOperationType.Withdraw,
-                accounts[0].Balance,
+                account.Balance,
                 DateTimeOffset.UtcNow);
 
             await _context.OperationHistoryRepository
@@ -186,7 +151,7 @@ public sealed class AccountService : IAccountService
                 .ToArrayAsync(cancellationToken);
 
             scope.Complete();
-            return new Withdraw.Response.Success(accounts[0].Balance.MapToDto());
+            return new Withdraw.Response.Success(account.Balance.MapToDto());
         }
         catch (Exception ex)
         {
@@ -198,15 +163,9 @@ public sealed class AccountService : IAccountService
         OperationHistory.Request request,
         CancellationToken cancellationToken)
     {
-        var sessionQuery = SessionQuery.Build(builder => builder
-            .WithSessionId(request.SessionId)
-            .WithPageSize(1));
+        UserSession? session = await _context.UserSessionRepository.FindUserSessionByIdAsync(request.SessionId, cancellationToken);
 
-        UserSession[] sessions = await _context.UserSessionRepository
-            .QueryAsync(sessionQuery, cancellationToken)
-            .ToArrayAsync(cancellationToken);
-
-        if (sessions.Length == 0)
+        if (session is null)
         {
             return new OperationHistory.Response.Failure("User session not found");
         }
@@ -216,7 +175,7 @@ public sealed class AccountService : IAccountService
             : null;
 
         var bankOperationQuery = OperationHistoryQuery.Build(builder => builder
-            .WithAccountId(sessions[0].AccountId)
+            .WithAccountId(session.AccountId)
             .WithKeyCursor(cursor)
             .WithPageSize(request.PageSize));
 

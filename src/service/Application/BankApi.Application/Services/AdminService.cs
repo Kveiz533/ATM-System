@@ -1,7 +1,7 @@
 ﻿using BankApi.Application.Abstractions;
-using BankApi.Application.Abstractions.Queries;
 using BankApi.Application.Contracts.Admins;
 using BankApi.Application.Contracts.Admins.Operations;
+using BankApi.Application.Extensions;
 using BankApi.Application.Mapping;
 using BankApi.Domain.Accounts;
 using BankApi.Domain.Sessions;
@@ -22,28 +22,16 @@ public sealed class AdminService : IAdminService
         CreateAccount.Request request,
         CancellationToken cancellationToken)
     {
-        var sessionQuery = SessionQuery.Build(builder => builder
-            .WithSessionId(request.SessionId)
-            .WithPageSize(1));
+        AdminSession? session = await _context.AdminSessionRepository.FindAdminSessionByIdAsync(request.SessionId, cancellationToken);
 
-        AdminSession[] session = await _context.AdminSessionRepository
-            .QueryAsync(sessionQuery, cancellationToken)
-            .ToArrayAsync(cancellationToken);
-
-        if (session.Length == 0)
+        if (session is null)
         {
             return new CreateAccount.Response.Failure("Admin session not found");
         }
 
-        var accountQuery = AccountQuery.Build(builder => builder
-            .WithAccountNumber(request.AccountNumber)
-            .WithPageSize(1));
+        Account? account = await _context.AccountRepository.FindAccountByAccountNumberAsync(request.AccountNumber, cancellationToken);
 
-        Account[] existingAccounts = await _context.AccountRepository
-            .QueryAsync(accountQuery, cancellationToken)
-            .ToArrayAsync(cancellationToken);
-
-        if (existingAccounts.Length > 0)
+        if (account is not null)
         {
             return new CreateAccount.Response.Failure("Account with this number already exists");
         }

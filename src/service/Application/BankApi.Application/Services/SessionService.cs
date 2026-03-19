@@ -1,7 +1,7 @@
 ﻿using BankApi.Application.Abstractions;
-using BankApi.Application.Abstractions.Queries;
 using BankApi.Application.Contracts.Sessions;
 using BankApi.Application.Contracts.Sessions.Operations;
+using BankApi.Application.Extensions;
 using BankApi.Application.Mapping;
 using BankApi.Application.Options;
 using BankApi.Domain.Accounts;
@@ -25,25 +25,19 @@ public sealed class SessionService : ISessionService
         LogInUser.Request request,
         CancellationToken cancellationToken)
     {
-        var accountQuery = AccountQuery.Build(builder => builder
-            .WithAccountNumber(request.AccountNumber)
-            .WithPageSize(1));
+        Account? account = await _context.AccountRepository.FindAccountByAccountNumberAsync(request.AccountNumber, cancellationToken);
 
-        Account[] accounts = await _context.AccountRepository
-            .QueryAsync(accountQuery, cancellationToken)
-            .ToArrayAsync(cancellationToken);
-
-        if (accounts.Length == 0)
+        if (account is null)
         {
             return new LogInUser.Response.Failure("No accounts found");
         }
 
-        if (!accounts[0].VerifyPinCode(request.PinCode))
+        if (!account.VerifyPinCode(request.PinCode))
         {
             return new LogInUser.Response.Failure("Invalid pin code");
         }
 
-        var session = new UserSession(Guid.NewGuid(), accounts[0].Id);
+        var session = new UserSession(Guid.NewGuid(), account.Id);
         await _context.UserSessionRepository.AddAsync([session], cancellationToken);
 
         return new LogInUser.Response.Success(session.MapToDto());

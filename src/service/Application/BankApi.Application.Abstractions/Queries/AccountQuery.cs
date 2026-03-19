@@ -7,5 +7,5 @@ namespace BankApi.Application.Abstractions.Queries;
 public sealed partial record AccountQuery(
     AccountId[] AccountIds,
     string[] AccountNumbers,
-    long? KeyCursor,
+    AccountId? KeyCursor,
     [RequiredValue] int PageSize);

@@ -9,6 +9,7 @@ using Spectre.Console;
 using Spectre.Console.Cli;
 
 IConfigurationRoot configuration = new ConfigurationManager()
+    .AddJsonFile("appsettings.json", optional: false)
     .AddUserSecrets<Program>()
     .Build();
 

@@ -16,4 +16,10 @@
       <ProjectReference Include="..\Presentation\BankApi.Cli.Presentation.Cli\BankApi.Cli.Presentation.Cli.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <None Update="appsettings.json">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+
 </Project>

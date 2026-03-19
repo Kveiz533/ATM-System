@@ -114,6 +114,7 @@ public class AccountRepository : IAccountRepository
                            """;
 
         long[] rawIds = accountQuery.AccountIds.Select(id => id.Value).ToArray();
+        long? rowKeyCursor = accountQuery.KeyCursor?.Value;
 
         await using var command = new NpgsqlCommand(sql, connection)
         {
@@ -121,7 +122,7 @@ public class AccountRepository : IAccountRepository
             {
                 new NpgsqlParameter("account_ids", rawIds),
                 new NpgsqlParameter("account_numbers", accountQuery.AccountNumbers),
-                new NpgsqlParameter<long?>("cursor_id", accountQuery.KeyCursor),
+                new NpgsqlParameter<long?>("cursor_id", rowKeyCursor),
                 new NpgsqlParameter("page_size", accountQuery.PageSize),
             },
         };
