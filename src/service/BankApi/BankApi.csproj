@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+    <PropertyGroup>
+      <UserSecretsId>759440d6-6024-46eb-9dc0-c4cb4e748526</UserSecretsId>
+    </PropertyGroup>
+    <ItemGroup>
+      <PackageReference Include="SourceKit.Generators.Builder.Annotations" />
+      <PackageReference Include="Swashbuckle.AspNetCore.Swagger" />
+      <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" />
+      <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" />
+    </ItemGroup>
+    <ItemGroup>
+      <ProjectReference Include="..\Application\BankApi.Application\BankApi.Application.csproj" />
+      <ProjectReference Include="..\Infrastructure\BankApi.Infrastructure.Persistence\BankApi.Infrastructure.Persistence.csproj" />
+      <ProjectReference Include="..\BankApi.Presentation.Http\BankApi.Presentation.Http.csproj" />
+    </ItemGroup>
+
+</Project>

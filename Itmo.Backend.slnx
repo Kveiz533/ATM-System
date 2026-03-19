@@ -1,5 +1,39 @@
 ﻿<Solution>
-  <Folder Name="/common/" />
+  <Folder Name="/common/">
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+  </Folder>
   <Folder Name="/src/" />
+  <Folder Name="/src/console-client/">
+    <Project Path="src/console-client/BankApi.Cli/BankApi.Cli.csproj" />
+  </Folder>
+  <Folder Name="/src/console-client/Application/">
+    <Project Path="src/console-client/Application/BankApi.Cli.Application.Abstractions/BankApi.Cli.Application.Abstractions.csproj" />
+    <Project Path="src/console-client/Application/BankApi.Cli.Application.Contracts/BankApi.Cli.Application.Contracts.csproj" />
+    <Project Path="src/console-client/Application/BankApi.Cli.Application/BankApi.Cli.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/console-client/Infrastructure/">
+    <Project Path="src/console-client/Infrastructure/BankApi.Cli.Infrastructure.BankService/BankApi.Cli.Infrastructure.BankService.csproj" />
+  </Folder>
+  <Folder Name="/src/console-client/Presentation/">
+    <Project Path="src/console-client/Presentation/BankApi.Cli.Presentation.Cli/BankApi.Cli.Presentation.Cli.csproj" />
+  </Folder>
+  <Folder Name="/src/service/">
+    <Project Path="src/service/BankApi/BankApi.csproj" />
+  </Folder>
+  <Folder Name="/src/service/Application/">
+    <Project Path="src/service/Application/BankApi.Application.Abstractions/BankApi.Application.Abstractions.csproj" />
+    <Project Path="src/service/Application/BankApi.Application.Contracts/BankApi.Application.Contracts.csproj" />
+    <Project Path="src/service/Application/BankApi.Application/BankApi.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/service/Domain/">
+    <Project Path="src/service/Domain/BankApi.Domain/BankApi.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/service/Infrastructure/">
+    <Project Path="src/service/Infrastructure/BankApi.Infrastructure.Persistence/BankApi.Infrastructure.Persistence.csproj" />
+  </Folder>
+  <Folder Name="/src/service/Presentation/">
+    <Project Path="src/service/BankApi.Presentation.Http/BankApi.Presentation.Http.csproj" />
+  </Folder>
   <Folder Name="/tests/" />
 </Solution>

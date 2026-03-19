@@ -1,0 +1,6 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\Infrastructure\BankApi.Cli.Infrastructure.BankService\BankApi.Cli.Infrastructure.BankService.csproj" />
+    <ProjectReference Include="..\BankApi.Cli.Application.Contracts\BankApi.Cli.Application.Contracts.csproj" />
+  </ItemGroup>
+</Project>

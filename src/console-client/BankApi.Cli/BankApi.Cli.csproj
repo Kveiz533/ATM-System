@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <UserSecretsId>201a08ce-1a91-402d-a3ca-27619ff24db3</UserSecretsId>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" />
+      <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+      <PackageReference Include="Spectre.Console.Registrars.Microsoft-Di" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Application\BankApi.Cli.Application\BankApi.Cli.Application.csproj" />
+      <ProjectReference Include="..\Presentation\BankApi.Cli.Presentation.Cli\BankApi.Cli.Presentation.Cli.csproj" />
+    </ItemGroup>
+
+</Project>
