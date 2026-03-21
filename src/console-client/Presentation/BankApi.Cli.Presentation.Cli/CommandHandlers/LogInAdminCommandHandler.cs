@@ -18,7 +18,7 @@ public sealed class LogInAdminCommandHandler : AsyncCommand
     protected override async Task<int> ExecuteAsync(CommandContext context, CancellationToken cancellationToken)
     {
         string password = AnsiConsole.Prompt(
-            new TextPrompt<string>("Please enter [red]admin password[/]:")
+            new TextPrompt<string>("Please enter [blue]admin password[/]:")
                 .PromptStyle("grey")
                 .Secret());
 

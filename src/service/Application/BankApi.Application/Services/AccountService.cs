@@ -77,31 +77,25 @@ public sealed class AccountService : IAccountService
             new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted, },
             TransactionScopeAsyncFlowOption.Enabled);
 
-        try
-        {
-            account.Deposit(new Money(request.Amount));
+        account.Deposit(new Money(request.Amount));
 
-            await _context.AccountRepository.UpdateAsync([account], cancellationToken)
-                .ToArrayAsync(cancellationToken);
+        await _context.AccountRepository
+            .UpdateAsync([account], cancellationToken)
+            .ToArrayAsync(cancellationToken);
 
-            var bankOperation = new BankOperation(
-                BankOperationId.Zero(),
-                account.Id,
-                BankOperationType.Deposit,
-                account.Balance,
-                DateTimeOffset.UtcNow);
+        var bankOperation = new BankOperation(
+            BankOperationId.Zero(),
+            account.Id,
+            BankOperationType.Deposit,
+            account.Balance,
+            DateTimeOffset.UtcNow);
 
-            await _context.OperationHistoryRepository
-                .AddAsync([bankOperation], cancellationToken)
-                .ToArrayAsync(cancellationToken);
+        await _context.OperationHistoryRepository
+            .AddAsync([bankOperation], cancellationToken)
+            .ToArrayAsync(cancellationToken);
 
-            scope.Complete();
-            return new Deposit.Response.Success(account.Balance.MapToDto());
-        }
-        catch (Exception ex)
-        {
-            return new Deposit.Response.Failure("Transaction failed: " + ex.Message);
-        }
+        scope.Complete();
+        return new Deposit.Response.Success(account.Balance.MapToDto());
     }
 
     public async Task<Withdraw.Response> WithdrawAsync(
@@ -127,36 +121,30 @@ public sealed class AccountService : IAccountService
             new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted, },
             TransactionScopeAsyncFlowOption.Enabled);
 
-        try
+        WithdrawResult withDrawResult = account.Withdraw(new Money(request.Amount));
+
+        if (withDrawResult is WithdrawResult.Failure failure)
         {
-            WithdrawResult withDrawResult = account.Withdraw(new Money(request.Amount));
-
-            if (withDrawResult is WithdrawResult.Failure failure)
-            {
-                return new Withdraw.Response.Failure(failure.Error);
-            }
-
-            await _context.AccountRepository.UpdateAsync([account], cancellationToken)
-                .ToArrayAsync(cancellationToken);
-
-            var bankOperation = new BankOperation(
-                BankOperationId.Zero(),
-                account.Id,
-                BankOperationType.Withdraw,
-                account.Balance,
-                DateTimeOffset.UtcNow);
-
-            await _context.OperationHistoryRepository
-                .AddAsync([bankOperation], cancellationToken)
-                .ToArrayAsync(cancellationToken);
-
-            scope.Complete();
-            return new Withdraw.Response.Success(account.Balance.MapToDto());
+            return new Withdraw.Response.Failure(failure.Error);
         }
-        catch (Exception ex)
-        {
-            return new Withdraw.Response.Failure("Transaction failed: " + ex.Message);
-        }
+
+        await _context.AccountRepository
+            .UpdateAsync([account], cancellationToken)
+            .ToArrayAsync(cancellationToken);
+
+        var bankOperation = new BankOperation(
+            BankOperationId.Zero(),
+            account.Id,
+            BankOperationType.Withdraw,
+            account.Balance,
+            DateTimeOffset.UtcNow);
+
+        await _context.OperationHistoryRepository
+            .AddAsync([bankOperation], cancellationToken)
+            .ToArrayAsync(cancellationToken);
+
+        scope.Complete();
+        return new Withdraw.Response.Success(account.Balance.MapToDto());
     }
 
     public async Task<OperationHistory.Response> OperationHistoryAsync(
@@ -170,8 +158,8 @@ public sealed class AccountService : IAccountService
             return new OperationHistory.Response.Failure("User session not found");
         }
 
-        BankOperationId? cursor = request.PageToken is { } token
-            ? new BankOperationId(token.Key)
+        BankOperationId? cursor = request.PageToken is not null
+            ? new BankOperationId(request.PageToken.Value.Key)
             : null;
 
         var bankOperationQuery = OperationHistoryQuery.Build(builder => builder

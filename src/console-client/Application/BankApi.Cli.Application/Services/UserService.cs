@@ -1,9 +1,9 @@
-﻿using BankApi.Cli.Application.Abstractions.SessionProviders;
-using BankApi.Cli.Application.Abstractions.Users;
+﻿using BankApi.Cli.Application.Abstractions.Users;
 using BankApi.Cli.Application.Abstractions.Users.Operations;
 using BankApi.Cli.Application.Contracts.Users;
 using BankApi.Cli.Application.Contracts.Users.Operations;
 using BankApi.Cli.Application.Mapping;
+using BankApi.Cli.Application.Providers;
 using System.Diagnostics;
 
 namespace BankApi.Cli.Application.Services;
@@ -11,9 +11,9 @@ namespace BankApi.Cli.Application.Services;
 public sealed class UserService : IUserService
 {
     private readonly IUserClient _client;
-    private readonly ISessionProvider _sessionProvider;
+    private readonly SessionProvider _sessionProvider;
 
-    public UserService(IUserClient client, ISessionProvider sessionProvider)
+    public UserService(IUserClient client, SessionProvider sessionProvider)
     {
         _client = client;
         _sessionProvider = sessionProvider;

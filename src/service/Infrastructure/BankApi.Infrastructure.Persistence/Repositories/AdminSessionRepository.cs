@@ -19,25 +19,29 @@ public class AdminSessionRepository : IAdminSessionRepository
 
     public async Task AddAsync(IReadOnlyCollection<AdminSession> adminSessions, CancellationToken cancellationToken)
     {
+        if (adminSessions.Count == 0)
+        {
+            return;
+        }
+
         await using NpgsqlConnection connection = await _dataSource.OpenConnectionAsync(cancellationToken);
 
         const string sql = """
-                           INSERT INTO admin_sessions (id)
-                           VALUES (:id)
-                           """;
+        INSERT INTO admin_sessions (id)
+        SELECT * FROM UNNEST(:ids)
+        """;
 
-        foreach (AdminSession adminSession in adminSessions)
+        Guid[] ids = adminSessions.Select(a => a.SessionId).ToArray();
+
+        await using var command = new NpgsqlCommand(sql, connection)
         {
-            await using var command = new NpgsqlCommand(sql, connection)
+            Parameters =
             {
-                Parameters =
-                {
-                    new NpgsqlParameter("id", adminSession.SessionId),
-                },
-            };
+                new NpgsqlParameter("ids", ids),
+            },
+        };
 
-            await command.ExecuteNonQueryAsync(cancellationToken);
-        }
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     public async IAsyncEnumerable<AdminSession> QueryAsync(
@@ -47,13 +51,13 @@ public class AdminSessionRepository : IAdminSessionRepository
         await using NpgsqlConnection connection = await _dataSource.OpenConnectionAsync(cancellationToken);
 
         const string sql = """
-                           SELECT id
-                           FROM admin_sessions
-                           WHERE ((cardinality(:session_ids) = 0 OR id = ANY(:session_ids))
-                           AND (:cursor_id IS NULL OR id > :cursor_id))
-                           ORDER BY id
-                           LIMIT :page_size;
-                           """;
+        SELECT id
+        FROM admin_sessions
+        WHERE ((cardinality(:session_ids) = 0 OR id = ANY(:session_ids))
+        AND (:cursor_id IS NULL OR id > :cursor_id))
+        ORDER BY id
+        LIMIT :page_size;
+        """;
 
         await using var command = new NpgsqlCommand(sql, connection)
         {
@@ -69,8 +73,7 @@ public class AdminSessionRepository : IAdminSessionRepository
 
         while (await reader.ReadAsync(cancellationToken))
         {
-            yield return new AdminSession(
-                sessionId: reader.GetGuid("id"));
+            yield return new AdminSession(sessionId: reader.GetGuid("id"));
         }
     }
 }

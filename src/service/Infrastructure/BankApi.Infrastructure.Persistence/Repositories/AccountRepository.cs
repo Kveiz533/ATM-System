@@ -22,36 +22,42 @@ public class AccountRepository : IAccountRepository
         IReadOnlyCollection<Account> accounts,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        if (accounts.Count == 0)
+        {
+            yield break;
+        }
+
         await using NpgsqlConnection connection = await _dataSource.OpenConnectionAsync(cancellationToken);
 
         const string sql = """
-                           INSERT INTO accounts (account_number, pin_code, balance)
-                           VALUES (:account_number, :pin_code, :balance)
-                           RETURNING id, account_number, pin_code, balance;
-                           """;
+        INSERT INTO accounts (account_number, pin_code, balance)
+        SELECT * FROM UNNEST(:account_numbers, :pin_codes, :balances)
+        RETURNING id, account_number, pin_code, balance;
+        """;
 
-        foreach (Account account in accounts)
+        string[] accountNumbers = accounts.Select(a => a.AccountNumber).ToArray();
+        string[] pinCodes = accounts.Select(a => a.PinCode).ToArray();
+        decimal[] balances = accounts.Select(a => a.Balance.Value).ToArray();
+
+        await using var command = new NpgsqlCommand(sql, connection)
         {
-            await using var command = new NpgsqlCommand(sql, connection)
+            Parameters =
             {
-                Parameters =
-                {
-                    new NpgsqlParameter("account_number", account.AccountNumber),
-                    new NpgsqlParameter("pin_code", account.PinCode),
-                    new NpgsqlParameter("balance", account.Balance.Value),
-                },
-            };
+                new NpgsqlParameter("account_numbers", accountNumbers),
+                new NpgsqlParameter("pin_codes", pinCodes),
+                new NpgsqlParameter("balances", balances),
+            },
+        };
 
-            await using DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken);
+        await using DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken);
 
-            if (await reader.ReadAsync(cancellationToken))
-            {
-                yield return new Account(
-                    id: new AccountId(reader.GetInt64("id")),
-                    accountNumber: reader.GetString("account_number"),
-                    pinCode: reader.GetString("pin_code"),
-                    balance: new Money(reader.GetDecimal("balance")));
-            }
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            yield return new Account(
+                id: new AccountId(reader.GetInt64("id")),
+                accountNumber: reader.GetString("account_number"),
+                pinCode: reader.GetString("pin_code"),
+                balance: new Money(reader.GetDecimal("balance")));
         }
     }
 
@@ -59,38 +65,44 @@ public class AccountRepository : IAccountRepository
         IReadOnlyCollection<Account> accounts,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await using NpgsqlConnection connection = await _dataSource.OpenConnectionAsync(cancellationToken);
-
-        const string sql = """
-                           UPDATE accounts 
-                           SET pin_code = :pin_code, 
-                               balance = :balance
-                           WHERE id = :id
-                           RETURNING id, account_number, pin_code, balance;
-                           """;
-
-        foreach (Account account in accounts)
+        if (accounts.Count == 0)
         {
-            await using var command = new NpgsqlCommand(sql, connection)
-            {
-                Parameters =
-                {
-                    new NpgsqlParameter("id", account.Id.Value),
-                    new NpgsqlParameter("pin_code", account.PinCode),
-                    new NpgsqlParameter("balance", account.Balance.Value),
-                },
-            };
+            yield break;
+        }
 
-            await using DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken);
+        await using NpgsqlConnection connection = await _dataSource.OpenConnectionAsync(cancellationToken);
+        const string sql = """
+        UPDATE accounts as base
+        SET pin_code = source.new_pin,
+            balance = source.new_balance
+        FROM (SELECT * FROM UNNEST(:ids, :pin_codes, :balances)) AS source(id, new_pin, new_balance)
+        WHERE base.id = source.id
+        RETURNING base.id, base.account_number, base.pin_code, base.balance;
+        """;
 
-            if (await reader.ReadAsync(cancellationToken))
+        long[] ids = accounts.Select(a => a.Id.Value).ToArray();
+        string[] pinCodes = accounts.Select(a => a.PinCode).ToArray();
+        decimal[] balances = accounts.Select(a => a.Balance.Value).ToArray();
+
+        await using var command = new NpgsqlCommand(sql, connection)
+        {
+            Parameters =
             {
-                yield return new Account(
-                    id: new AccountId(reader.GetInt64("id")),
-                    accountNumber: reader.GetString("account_number"),
-                    pinCode: reader.GetString("pin_code"),
-                    balance: new Money(reader.GetDecimal("balance")));
-            }
+                new NpgsqlParameter("ids", ids),
+                new NpgsqlParameter("pin_codes", pinCodes),
+                new NpgsqlParameter("balances", balances),
+            },
+        };
+
+        await using DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken);
+
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            yield return new Account(
+                id: new AccountId(reader.GetInt64("id")),
+                accountNumber: reader.GetString("account_number"),
+                pinCode: reader.GetString("pin_code"),
+                balance: new Money(reader.GetDecimal("balance")));
         }
     }
 
@@ -101,20 +113,20 @@ public class AccountRepository : IAccountRepository
         await using NpgsqlConnection connection = await _dataSource.OpenConnectionAsync(cancellationToken);
 
         const string sql = """
-                           SELECT id,
-                                  account_number,
-                                  pin_code,
-                                  balance
-                           FROM accounts
-                           WHERE (cardinality(:account_ids) = 0 OR id = ANY(:account_ids))
-                             AND (cardinality(:account_numbers) = 0 OR account_number = ANY(:account_numbers))
-                             AND (:cursor_id IS NULL OR id > :cursor_id)
-                           ORDER BY id
-                           LIMIT :page_size;
-                           """;
+        SELECT id,
+            account_number,
+            pin_code,
+            balance
+        FROM accounts
+        WHERE (cardinality(:account_ids) = 0 OR id = ANY(:account_ids))
+            AND (cardinality(:account_numbers) = 0 OR account_number = ANY(:account_numbers))
+            AND (:cursor_id IS NULL OR id > :cursor_id)
+        ORDER BY id
+        LIMIT :page_size;
+        """;
 
         long[] rawIds = accountQuery.AccountIds.Select(id => id.Value).ToArray();
-        long? rowKeyCursor = accountQuery.KeyCursor?.Value;
+        long? rawKeyCursor = accountQuery.KeyCursor?.Value;
 
         await using var command = new NpgsqlCommand(sql, connection)
         {
@@ -122,7 +134,7 @@ public class AccountRepository : IAccountRepository
             {
                 new NpgsqlParameter("account_ids", rawIds),
                 new NpgsqlParameter("account_numbers", accountQuery.AccountNumbers),
-                new NpgsqlParameter<long?>("cursor_id", rowKeyCursor),
+                new NpgsqlParameter<long?>("cursor_id", rawKeyCursor),
                 new NpgsqlParameter("page_size", accountQuery.PageSize),
             },
         };

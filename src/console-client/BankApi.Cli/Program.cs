@@ -1,5 +1,4 @@
 ﻿using BankApi.Cli.Application;
-using BankApi.Cli.Application.Abstractions.SessionProviders;
 using BankApi.Cli.Application.Providers;
 using BankApi.Cli.Infrastructure.BankService;
 using BankApi.Cli.Presentation.Cli.CommandHandlers;
@@ -16,7 +15,7 @@ IConfigurationRoot configuration = new ConfigurationManager()
 var sessionProvider = new SessionProvider();
 
 IServiceCollection collection = new ServiceCollection()
-    .AddSingleton<ISessionProvider>(sessionProvider)
+    .AddSingleton(sessionProvider)
     .AddApplication()
     .AddBankClient()
     .AddSingleton<IConfiguration>(configuration);

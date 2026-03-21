@@ -23,7 +23,7 @@ public sealed class LogInUserCommandHandler : AsyncCommand
                     ? ValidationResult.Success()
                     : ValidationResult.Error("[yellow]Account number must be 20 digits[/]")));
 
-        string pin = AnsiConsole.Prompt(
+        string pinCode = AnsiConsole.Prompt(
             new TextPrompt<string>("Enter your [green]PIN[/]:")
                 .PromptStyle("grey")
                 .Secret()
@@ -31,10 +31,10 @@ public sealed class LogInUserCommandHandler : AsyncCommand
                     ? ValidationResult.Success()
                     : ValidationResult.Error("[yellow]PIN must be 4 digits[/]")));
 
-        var request = new LogInUser.Request(accountNumber, pin);
+        var request = new LogInUser.Request(accountNumber, pinCode);
         LogInUser.Response response = await _service.LogInUserAsync(request, cancellationToken);
 
-        if (response is LogInUser.Response.Success success)
+        if (response is LogInUser.Response.Success)
         {
             AnsiConsole.MarkupLine("[green]Successfully logged in![/]");
             return 0;

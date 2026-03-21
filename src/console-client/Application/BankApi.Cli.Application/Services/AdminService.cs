@@ -1,8 +1,8 @@
 ﻿using BankApi.Cli.Application.Abstractions.Admins;
 using BankApi.Cli.Application.Abstractions.Admins.Operations;
-using BankApi.Cli.Application.Abstractions.SessionProviders;
 using BankApi.Cli.Application.Contracts.Admins;
 using BankApi.Cli.Application.Contracts.Admins.Operations;
+using BankApi.Cli.Application.Providers;
 using System.Diagnostics;
 
 namespace BankApi.Cli.Application.Services;
@@ -10,9 +10,9 @@ namespace BankApi.Cli.Application.Services;
 public sealed class AdminService : IAdminService
 {
     private readonly IAdminClient _client;
-    private readonly ISessionProvider _sessionProvider;
+    private readonly SessionProvider _sessionProvider;
 
-    public AdminService(IAdminClient client, ISessionProvider sessionProvider)
+    public AdminService(IAdminClient client, SessionProvider sessionProvider)
     {
         _client = client;
         _sessionProvider = sessionProvider;

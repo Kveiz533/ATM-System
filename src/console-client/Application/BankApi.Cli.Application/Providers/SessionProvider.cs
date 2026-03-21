@@ -1,8 +1,6 @@
-﻿using BankApi.Cli.Application.Abstractions.SessionProviders;
+﻿namespace BankApi.Cli.Application.Providers;
 
-namespace BankApi.Cli.Application.Providers;
-
-public class SessionProvider : ISessionProvider
+public class SessionProvider
 {
     public Guid? SessionId { get; set; }
 }

@@ -17,9 +17,19 @@ public sealed class CreateAccountCommandHandler : AsyncCommand
 
     protected override async Task<int> ExecuteAsync(CommandContext context, CancellationToken cancellationToken)
     {
-        string accountNumber = AnsiConsole.Ask<string>("Enter new [blue]account number[/] (20 digits):");
+        string accountNumber = AnsiConsole.Prompt(
+            new TextPrompt<string>("Enter your [blue]account number[/]:")
+                .Validate(acc => acc.Length == 20
+                    ? ValidationResult.Success()
+                    : ValidationResult.Error("[yellow]Account number must be 20 digits[/]")));
 
-        string pinCode = AnsiConsole.Ask<string>("Enter [green]initial PIN[/] (4 digits):");
+        string pinCode = AnsiConsole.Prompt(
+            new TextPrompt<string>("Enter your [green]PIN[/]:")
+                .PromptStyle("grey")
+                .Secret()
+                .Validate(p => p.Length == 4
+                    ? ValidationResult.Success()
+                    : ValidationResult.Error("[yellow]PIN must be 4 digits[/]")));
 
         var request = new CreateAccount.Request(accountNumber, pinCode);
         CreateAccount.Response response = await _service.CreateAccountAsync(request, cancellationToken);

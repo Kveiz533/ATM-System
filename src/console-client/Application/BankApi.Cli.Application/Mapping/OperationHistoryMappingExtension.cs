@@ -13,7 +13,7 @@ public static class OperationHistoryMappingExtension
                 AccountId: dto.AccountId,
                 Time: dto.Time,
                 BankOperationType: dto.BankOperationType,
-                Balance: dto.Balance)).
-            ToList();
+                Balance: dto.Balance))
+            .ToList();
     }
 }

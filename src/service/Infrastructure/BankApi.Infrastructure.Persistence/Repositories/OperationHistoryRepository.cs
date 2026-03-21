@@ -23,38 +23,45 @@ public class OperationHistoryRepository : IOperationHistoryRepository
         IReadOnlyCollection<BankOperation> bankOperations,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        if (bankOperations.Count == 0)
+        {
+            yield break;
+        }
+
         await using NpgsqlConnection connection = await _dataSource.OpenConnectionAsync(cancellationToken);
 
         const string sql = """
-                           INSERT INTO operation_history (account_id, time, operation_type, balance)
-                           VALUES (:account_id, :time, :operation_type, :balance)
-                           RETURNING id, account_id, time, operation_type, balance;
-                           """;
+        INSERT INTO operation_history (account_id, time, operation_type, balance)
+        SELECT * FROM UNNEST(:account_ids, :times, :operation_types, :balances)
+        RETURNING id, account_id, time, operation_type, balance;
+        """;
 
-        foreach (BankOperation bankOperation in bankOperations)
+        long[] accountIds = bankOperations.Select(b => b.AccountId.Value).ToArray();
+        DateTimeOffset[] times = bankOperations.Select(b => b.Time).ToArray();
+        int[] operationTypes = bankOperations.Select(b => (int)b.BankOperationType).ToArray();
+        decimal[] balances = bankOperations.Select(b => b.Balance.Value).ToArray();
+
+        await using var command = new NpgsqlCommand(sql, connection)
         {
-            await using var command = new NpgsqlCommand(sql, connection)
+            Parameters =
             {
-                Parameters =
-                {
-                    new NpgsqlParameter("account_id", bankOperation.AccountId.Value),
-                    new NpgsqlParameter("time", bankOperation.Time),
-                    new NpgsqlParameter("operation_type", (int)bankOperation.BankOperationType),
-                    new NpgsqlParameter("balance", bankOperation.Balance.Value),
-                },
-            };
+                new NpgsqlParameter("account_ids", accountIds),
+                new NpgsqlParameter("times", times),
+                new NpgsqlParameter("operation_types", operationTypes),
+                new NpgsqlParameter("balances", balances),
+            },
+        };
 
-            await using DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken);
+        await using DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken);
 
-            if (await reader.ReadAsync(cancellationToken))
-            {
-                yield return new BankOperation(
-                    id: new BankOperationId(reader.GetInt64("id")),
-                    accountId: new AccountId(reader.GetInt64("account_id")),
-                    bankOperationType: (BankOperationType)reader.GetInt32("operation_type"),
-                    newBalance: new Money(reader.GetDecimal("balance")),
-                    time: reader.GetFieldValue<DateTimeOffset>("time"));
-            }
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            yield return new BankOperation(
+                id: new BankOperationId(reader.GetInt64("id")),
+                accountId: new AccountId(reader.GetInt64("account_id")),
+                bankOperationType: (BankOperationType)reader.GetInt32("operation_type"),
+                newBalance: new Money(reader.GetDecimal("balance")),
+                time: reader.GetFieldValue<DateTimeOffset>("time"));
         }
     }
 
@@ -65,17 +72,17 @@ public class OperationHistoryRepository : IOperationHistoryRepository
         await using NpgsqlConnection connection = await _dataSource.OpenConnectionAsync(cancellationToken);
 
         const string sql = """
-                           SELECT id,
-                                  account_id,
-                                  time,
-                                  operation_type,
-                                  balance
-                           FROM operation_history
-                           WHERE ((cardinality(:account_ids) = 0 OR account_id = ANY(:account_ids))
-                           AND (:cursor_id IS NULL OR id < :cursor_id))
-                           ORDER BY time DESC, id DESC
-                           LIMIT :page_size;
-                           """;
+        SELECT id,
+            account_id,
+            time,
+            operation_type,
+            balance
+        FROM operation_history
+        WHERE (cardinality(:account_ids) = 0 OR account_id = ANY(:account_ids))
+        AND (:cursor_id IS NULL OR id < :cursor_id)
+        ORDER BY time DESC, id DESC
+        LIMIT :page_size;
+        """;
 
         long[] rawIds = operationHistoryQuery.AccountIds.Select(id => id.Value).ToArray();
         long? rowKeyCursor = operationHistoryQuery.KeyCursor?.Value;

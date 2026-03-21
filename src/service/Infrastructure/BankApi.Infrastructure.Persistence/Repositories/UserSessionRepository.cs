@@ -20,26 +20,31 @@ public class UserSessionRepository : IUserSessionRepository
 
     public async Task AddAsync(IReadOnlyCollection<UserSession> userSessions, CancellationToken cancellationToken)
     {
+        if (userSessions.Count == 0)
+        {
+            return;
+        }
+
         await using NpgsqlConnection connection = await _dataSource.OpenConnectionAsync(cancellationToken);
 
         const string sql = """
-                           INSERT INTO user_sessions (id, account_id)
-                           VALUES (:id, :account_id)
-                           """;
+        INSERT INTO user_sessions (id, account_id)
+        SELECT * FROM UNNEST(:ids, :account_ids)
+        """;
 
-        foreach (UserSession userSession in userSessions)
+        Guid[] sessionIds = userSessions.Select(u => u.SessionId).ToArray();
+        long[] accountIds = userSessions.Select(u => u.AccountId.Value).ToArray();
+
+        await using var command = new NpgsqlCommand(sql, connection)
         {
-            await using var command = new NpgsqlCommand(sql, connection)
+            Parameters =
             {
-                Parameters =
-                {
-                    new NpgsqlParameter("id", userSession.SessionId),
-                    new NpgsqlParameter("account_id", userSession.AccountId.Value),
-                },
-            };
+                new NpgsqlParameter("ids", sessionIds),
+                new NpgsqlParameter("account_ids", accountIds),
+            },
+        };
 
-            await command.ExecuteNonQueryAsync(cancellationToken);
-        }
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     public async IAsyncEnumerable<UserSession> QueryAsync(
@@ -49,14 +54,14 @@ public class UserSessionRepository : IUserSessionRepository
         await using NpgsqlConnection connection = await _dataSource.OpenConnectionAsync(cancellationToken);
 
         const string sql = """
-                           SELECT id,
-                                  account_id
-                           FROM user_sessions
-                           WHERE ((cardinality(:session_ids) = 0 OR id = ANY(:session_ids))
-                               AND (:cursor_id IS NULL OR id > :cursor_id))
-                           ORDER BY id
-                           LIMIT :page_size;
-                           """;
+        SELECT id,
+            account_id
+        FROM user_sessions
+        WHERE ((cardinality(:session_ids) = 0 OR id = ANY(:session_ids))
+            AND (:cursor_id IS NULL OR id > :cursor_id))
+        ORDER BY id
+        LIMIT :page_size;
+        """;
 
         await using var command = new NpgsqlCommand(sql, connection)
         {
